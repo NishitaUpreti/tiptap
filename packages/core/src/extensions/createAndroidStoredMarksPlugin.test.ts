@@ -26,6 +26,7 @@ function reconcile(text: string, from = 1, to = editor.state.doc.content.size - 
   editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, from)))
   const transaction = editor.state.tr.insertText(text, from, to).setMeta('composition', 1)
 
+  transaction.setSelection(TextSelection.create(transaction.doc, from + text.length))
   editor.view.dispatch(transaction)
 }
 
@@ -82,6 +83,44 @@ describe('Android stored marks during composition', () => {
 
     expect(editor.state.doc.firstChild?.lastChild?.marks[0].attrs.tone).toBe('accent')
     expect(editor.state.doc.firstChild?.firstChild?.marks).toEqual([])
+  })
+})
+
+describe('Android successive mark toggles', () => {
+  it('preserves earlier formatted characters after toggling the mark off', () => {
+    createEditor()
+    editor.commands.toggleBold()
+    reconcile('prosemirror')
+    editor.commands.toggleBold()
+    reconcile('prosemirrors')
+
+    expect(editor.getHTML()).toBe('<p>prose<strong>mirror</strong>s</p>')
+  })
+
+  it('preserves multiple mark sets across whole-word replacements', () => {
+    createEditor()
+    editor.commands.toggleBold()
+    reconcile('prosemirror')
+    editor.commands.toggleItalic()
+    reconcile('prosemirrors')
+    editor.commands.toggleBold()
+    reconcile('prosemirrorsx')
+
+    expect(editor.getHTML()).toBe('<p>prose<strong>mirror<em>s</em></strong><em>x</em></p>')
+  })
+
+  it('restores earlier mark intervals after the keyboard temporarily deletes its word', () => {
+    createEditor()
+    editor.commands.toggleBold()
+    reconcile('prosemirror')
+    editor.commands.toggleBold()
+    editor.view.dom.dispatchEvent(new CompositionEvent('compositionupdate'))
+    editor.view.dispatch(
+      editor.state.tr.delete(1, editor.state.doc.content.size - 1).setMeta('composition', 1),
+    )
+    reconcile('prosemirrors', 1, 1)
+
+    expect(editor.getHTML()).toBe('<p>prose<strong>mirror</strong>s</p>')
   })
 })
 

@@ -33,9 +33,20 @@ test('preserves mark toggles when the second word keeps its native composition',
   await compose('prose')
   await toggleBold()
   await compose('prosemirror')
-  await compose('prosemirrors')
-  await client.send('Input.insertText', { text: 'prosemirrors ' })
+  await expect
+    .poll(() =>
+      editor.evaluate(element => (element as HTMLElement & { editor: Editor }).editor.getHTML()),
+    )
+    .toBe('<p>Prose<strong>mirror</strong> prose<strong>mirror</strong></p>')
+  await toggleBold()
+  await compose('s')
+  await expect
+    .poll(() =>
+      editor.evaluate(element => (element as HTMLElement & { editor: Editor }).editor.getHTML()),
+    )
+    .toBe('<p>Prose<strong>mirror</strong> prose<strong>mirror</strong>s</p>')
+  await client.send('Input.insertText', { text: 's ' })
 
   await expect(editor).toHaveText('Prosemirror prosemirrors ')
-  await expect(editor.locator('strong')).toHaveText(['mirror', 'mirrors '])
+  await expect(editor.locator('strong')).toHaveText(['mirror', 'mirror'])
 })

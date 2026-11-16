@@ -2,15 +2,17 @@ import { Mark } from '@tiptap/pm/model'
 import type { EditorState, Transaction } from '@tiptap/pm/state'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 
-interface PendingMarks {
+interface MarkBoundary {
   marks: readonly Mark[]
   from: number
   deletedOffset: number
 }
 
+type PendingMarks = readonly MarkBoundary[]
+
 const pluginKey = new PluginKey<PendingMarks | null>('androidStoredMarks')
 
-function mapPendingMarks(pending: PendingMarks, transaction: Transaction): PendingMarks {
+function mapBoundary(pending: MarkBoundary, transaction: Transaction): MarkBoundary {
   let { from, deletedOffset } = pending
 
   for (const map of transaction.mapping.maps) {
@@ -34,12 +36,18 @@ function mapPendingMarks(pending: PendingMarks, transaction: Transaction): Pendi
   return { ...pending, from, deletedOffset }
 }
 
-function capturePendingMarks(transaction: Transaction): PendingMarks | null {
+function capturePendingMarks(
+  transaction: Transaction,
+  pending: PendingMarks | null,
+): PendingMarks | null {
   if (!transaction.selection.empty || !transaction.storedMarks) {
     return null
   }
 
-  return { marks: transaction.storedMarks, from: transaction.selection.from, deletedOffset: 0 }
+  const from = transaction.selection.from
+  const earlier = pending?.filter(boundary => boundary.from + boundary.deletedOffset < from) ?? []
+
+  return [...earlier, { marks: transaction.storedMarks, from, deletedOffset: 0 }]
 }
 
 function shouldClearPendingMarks(transaction: Transaction, compositionEvent: boolean): boolean {
@@ -62,7 +70,7 @@ function applyPendingMarks(
   }
 
   if (transaction.storedMarksSet && !transaction.docChanged) {
-    return capturePendingMarks(transaction)
+    return capturePendingMarks(transaction, pending)
   }
 
   if (!pending) {
@@ -73,7 +81,32 @@ function applyPendingMarks(
     return null
   }
 
-  return mapPendingMarks(pending, transaction)
+  return pending.map(boundary => mapBoundary(boundary, transaction))
+}
+
+function applyMarkBoundary(
+  transaction: Transaction,
+  requestedMarks: readonly Mark[],
+  from: number,
+  to: number,
+): void {
+  transaction.doc.nodesBetween(from, to, (node, position, parent) => {
+    if (!node.isText || !parent) {
+      return
+    }
+
+    const marks = parent.type.allowedMarks(requestedMarks)
+
+    if (Mark.sameSet(node.marks, marks)) {
+      return
+    }
+
+    const start = Math.max(position, from)
+    const end = Math.min(position + node.nodeSize, to)
+
+    transaction.removeMark(start, end)
+    marks.forEach(mark => transaction.addMark(start, end, mark))
+  })
 }
 
 function appendPendingMarks(
@@ -97,7 +130,7 @@ function appendPendingMarks(
     return null
   }
 
-  const from = Math.max(start, pending.from + pending.deletedOffset)
+  const from = Math.max(start, pending[0].from + pending[0].deletedOffset)
   const overlap = Math.max(0, start - Math.min(end.a, end.b))
   const to = end.b + overlap
 
@@ -107,22 +140,14 @@ function appendPendingMarks(
 
   const transaction = newState.tr
 
-  newState.doc.nodesBetween(from, to, (node, position, parent) => {
-    if (!node.isText || !parent) {
-      return
+  pending.forEach((boundary, index) => {
+    const next = pending[index + 1]
+    const rangeStart = Math.max(from, boundary.from + boundary.deletedOffset)
+    const rangeEnd = next ? Math.min(to, next.from + next.deletedOffset) : to
+
+    if (rangeStart < rangeEnd) {
+      applyMarkBoundary(transaction, boundary.marks, rangeStart, rangeEnd)
     }
-
-    const marks = parent.type.allowedMarks(pending.marks)
-
-    if (Mark.sameSet(node.marks, marks)) {
-      return
-    }
-
-    const start = Math.max(position, from)
-    const end = Math.min(position + node.nodeSize, to)
-
-    transaction.removeMark(start, end)
-    marks.forEach(mark => transaction.addMark(start, end, mark))
   })
   transaction.setMeta(pluginKey, pending)
   return transaction.steps.length ? transaction : null
