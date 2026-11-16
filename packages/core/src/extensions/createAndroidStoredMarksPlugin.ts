@@ -98,7 +98,8 @@ function appendPendingMarks(
   }
 
   const from = Math.max(start, pending.from + pending.deletedOffset)
-  const to = end.b
+  const overlap = Math.max(0, start - Math.min(end.a, end.b))
+  const to = end.b + overlap
 
   if (from >= to) {
     return null

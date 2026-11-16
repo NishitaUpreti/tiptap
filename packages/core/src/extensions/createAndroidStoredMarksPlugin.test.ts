@@ -86,6 +86,14 @@ describe('Android stored marks during composition', () => {
 })
 
 describe('Android stored mark boundaries', () => {
+  it('formats an appended character that matches the existing suffix', () => {
+    createEditor()
+    editor.commands.toggleBold()
+    reconcile('prosee')
+
+    expect(editor.getHTML()).toBe('<p>prose<strong>e</strong></p>')
+  })
+
   it('does not apply a toggle to corrected text before its boundary', () => {
     createEditor()
     editor.commands.toggleBold()
