@@ -125,6 +125,19 @@ describe('Android successive mark toggles', () => {
 })
 
 describe('Android stored mark boundaries', () => {
+  it('maps surviving formatting boundaries through earlier insertions', () => {
+    createEditor('<p><strong>pro</strong>se</p>')
+    editor.commands.toggleItalic()
+    const transaction = editor.state.tr
+      .replaceWith(2, 2, editor.schema.text('X', [editor.schema.marks.bold.create()]))
+      .replaceWith(7, 7, editor.schema.text('!'))
+
+    transaction.setSelection(TextSelection.create(transaction.doc, 8))
+    editor.view.dispatch(transaction.setMeta('composition', 1))
+
+    expect(editor.getHTML()).toBe('<p><strong>pXro</strong>se<em>!</em></p>')
+  })
+
   it.each(['', '!'])(
     'keeps the toggle boundary across a shared suffix and subsequent insertion "%s"',
     suffix => {

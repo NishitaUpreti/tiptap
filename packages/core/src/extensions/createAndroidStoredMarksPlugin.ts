@@ -26,7 +26,7 @@ function mapBoundary(pending: MarkBoundary, transaction: Transaction): MarkBound
 
     map.forEach((oldStart, oldEnd, newStart, newEnd) => {
       const compositionEnd = Math.max(oldEnd, map.invert().map(caret))
-      const containsBoundary = from > oldStart && from <= compositionEnd
+      const containsBoundary = oldStart < oldEnd && from > oldStart && from <= compositionEnd
       const restoresBoundary = deletedOffset > 0 && from === oldStart
 
       if (containsBoundary || restoresBoundary) {
