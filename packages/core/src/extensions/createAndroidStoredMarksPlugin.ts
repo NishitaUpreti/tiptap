@@ -15,16 +15,23 @@ const pluginKey = new PluginKey<PendingMarks | null>('androidStoredMarks')
 function mapBoundary(pending: MarkBoundary, transaction: Transaction): MarkBoundary {
   let { from, deletedOffset } = pending
 
-  for (const map of transaction.mapping.maps) {
+  for (const [index, map] of transaction.mapping.maps.entries()) {
     let nextFrom = map.map(from, -1)
+    const caret = transaction.mapping.maps
+      .slice(index + 1)
+      .reduceRight(
+        (position, nextMap) => nextMap.invert().map(position),
+        transaction.selection.from,
+      )
 
     map.forEach((oldStart, oldEnd, newStart, newEnd) => {
-      const containsBoundary = from > oldStart && from <= oldEnd
+      const compositionEnd = Math.max(oldEnd, map.invert().map(caret))
+      const containsBoundary = from > oldStart && from <= compositionEnd
       const restoresBoundary = deletedOffset > 0 && from === oldStart
 
       if (containsBoundary || restoresBoundary) {
         const offset = from - oldStart + deletedOffset
-        const available = Math.min(offset, newEnd - newStart)
+        const available = Math.min(offset, Math.max(newEnd, caret) - newStart)
 
         nextFrom = newStart + available
         deletedOffset = offset - available

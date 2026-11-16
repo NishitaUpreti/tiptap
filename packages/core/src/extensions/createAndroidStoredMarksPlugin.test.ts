@@ -125,6 +125,25 @@ describe('Android successive mark toggles', () => {
 })
 
 describe('Android stored mark boundaries', () => {
+  it.each(['', '!'])(
+    'keeps the toggle boundary across a shared suffix and subsequent insertion "%s"',
+    suffix => {
+      createEditor('<p><strong>pro</strong>se</p>')
+      editor.commands.toggleItalic()
+      editor.view.dom.dispatchEvent(new CompositionEvent('compositionupdate'))
+      const transaction = editor.state.tr.replaceWith(1, 4, editor.schema.text('proseca'))
+
+      if (suffix) {
+        transaction.insertText(suffix, 10)
+      }
+
+      transaction.setSelection(TextSelection.create(transaction.doc, 10 + suffix.length))
+      editor.view.dispatch(transaction.setMeta('composition', 1))
+
+      expect(editor.getHTML()).toBe(`<p><strong>pro</strong>se<em>case${suffix}</em></p>`)
+    },
+  )
+
   it.each(['mirror', 'e'])(
     'preserves mixed prefix formatting when composing the suffix %s',
     suffix => {
