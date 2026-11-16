@@ -125,6 +125,20 @@ describe('Android successive mark toggles', () => {
 })
 
 describe('Android stored mark boundaries', () => {
+  it('uses the composition caret to distinguish an insertion inside repeated text', () => {
+    createEditor('<p>aaaa</p>')
+    editor.commands.setTextSelection(3)
+    editor.commands.toggleBold()
+    editor.view.dom.dispatchEvent(new CompositionEvent('compositionupdate'))
+    const transaction = editor.state.tr.insertText('aaaaa', 1, 5)
+
+    transaction.setSelection(TextSelection.create(transaction.doc, 4))
+    editor.view.dispatch(transaction.setMeta('composition', 1))
+
+    expect(editor.getHTML()).toBe('<p>aa<strong>a</strong>aa</p>')
+    expect(editor.state.selection.from).toBe(4)
+  })
+
   it('formats an appended character that matches the existing suffix', () => {
     createEditor()
     editor.commands.toggleBold()

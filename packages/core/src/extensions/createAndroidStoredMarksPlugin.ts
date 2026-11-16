@@ -109,6 +109,26 @@ function applyMarkBoundary(
   })
 }
 
+function findCompositionRange(oldState: EditorState, newState: EditorState) {
+  let from = oldState.doc.content.findDiffStart(newState.doc.content)
+  const end = oldState.doc.content.findDiffEnd(newState.doc.content)
+
+  if (from === null || !end) {
+    return null
+  }
+
+  if (end.a < from && oldState.doc.content.size < newState.doc.content.size) {
+    const insertedSize = end.b - end.a
+
+    from = Math.max(end.a, Math.min(from, newState.selection.from - insertedSize))
+    return { from, to: from + insertedSize }
+  }
+
+  const overlap = Math.max(0, from - Math.min(end.a, end.b))
+
+  return { from, to: end.b + overlap }
+}
+
 function appendPendingMarks(
   transactions: readonly Transaction[],
   oldState: EditorState,
@@ -123,16 +143,14 @@ function appendPendingMarks(
     return null
   }
 
-  const start = oldState.doc.content.findDiffStart(newState.doc.content)
-  const end = oldState.doc.content.findDiffEnd(newState.doc.content)
+  const range = findCompositionRange(oldState, newState)
 
-  if (start === null || !end) {
+  if (!range) {
     return null
   }
 
-  const from = Math.max(start, pending[0].from + pending[0].deletedOffset)
-  const overlap = Math.max(0, start - Math.min(end.a, end.b))
-  const to = end.b + overlap
+  const from = Math.max(range.from, pending[0].from + pending[0].deletedOffset)
+  const { to } = range
 
   if (from >= to) {
     return null
