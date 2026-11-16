@@ -135,8 +135,15 @@ function findCompositionRange(oldState: EditorState, newState: EditorState) {
   }
 
   const overlap = Math.max(0, from - Math.min(end.a, end.b))
+  const to = end.b + overlap
 
-  return { from, to: end.b + overlap }
+  return {
+    from,
+    to:
+      oldState.doc.content.size < newState.doc.content.size
+        ? Math.max(to, newState.selection.from)
+        : to,
+  }
 }
 
 function appendPendingMarks(

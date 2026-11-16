@@ -125,18 +125,21 @@ describe('Android successive mark toggles', () => {
 })
 
 describe('Android stored mark boundaries', () => {
-  it('preserves mixed formatting before the first toggle during unmarked replacement', () => {
-    createEditor('<p><strong>pro</strong>se</p>')
-    editor.commands.toggleItalic()
+  it.each(['mirror', 'e'])(
+    'preserves mixed prefix formatting when composing the suffix %s',
+    suffix => {
+      createEditor('<p><strong>pro</strong>se</p>')
+      editor.commands.toggleItalic()
 
-    editor.view.dom.dispatchEvent(new CompositionEvent('compositionupdate'))
-    const transaction = editor.state.tr.replaceWith(1, 6, editor.schema.text('prosemirror'))
+      editor.view.dom.dispatchEvent(new CompositionEvent('compositionupdate'))
+      const transaction = editor.state.tr.replaceWith(1, 6, editor.schema.text(`prose${suffix}`))
 
-    transaction.setSelection(TextSelection.create(transaction.doc, 12))
-    editor.view.dispatch(transaction.setMeta('composition', 1))
+      transaction.setSelection(TextSelection.create(transaction.doc, 6 + suffix.length))
+      editor.view.dispatch(transaction.setMeta('composition', 1))
 
-    expect(editor.getHTML()).toBe('<p><strong>pro</strong>se<em>mirror</em></p>')
-  })
+      expect(editor.getHTML()).toBe(`<p><strong>pro</strong>se<em>${suffix}</em></p>`)
+    },
+  )
 
   it('restores mixed prefix marks after temporary composition deletion', () => {
     createEditor('<p><strong>pro</strong>se</p>')
