@@ -125,6 +125,29 @@ describe('Android successive mark toggles', () => {
 })
 
 describe('Android stored mark boundaries', () => {
+  it('preserves mixed formatting before the first toggle during unmarked replacement', () => {
+    createEditor('<p><strong>pro</strong>se</p>')
+    editor.commands.toggleItalic()
+
+    editor.view.dom.dispatchEvent(new CompositionEvent('compositionupdate'))
+    const transaction = editor.state.tr.replaceWith(1, 6, editor.schema.text('prosemirror'))
+
+    transaction.setSelection(TextSelection.create(transaction.doc, 12))
+    editor.view.dispatch(transaction.setMeta('composition', 1))
+
+    expect(editor.getHTML()).toBe('<p><strong>pro</strong>se<em>mirror</em></p>')
+  })
+
+  it('restores mixed prefix marks after temporary composition deletion', () => {
+    createEditor('<p><strong>pro</strong>se</p>')
+    editor.commands.toggleItalic()
+    editor.view.dom.dispatchEvent(new CompositionEvent('compositionupdate'))
+    editor.view.dispatch(editor.state.tr.delete(1, 6).setMeta('composition', 1))
+    reconcile('prosemirror', 1, 1)
+
+    expect(editor.getHTML()).toBe('<p><strong>pro</strong>se<em>mirror</em></p>')
+  })
+
   it('uses the composition caret to distinguish an insertion inside repeated text', () => {
     createEditor('<p>aaaa</p>')
     editor.commands.setTextSelection(3)

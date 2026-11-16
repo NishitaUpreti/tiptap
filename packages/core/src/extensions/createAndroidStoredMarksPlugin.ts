@@ -47,6 +47,16 @@ function capturePendingMarks(
   const from = transaction.selection.from
   const earlier = pending?.filter(boundary => boundary.from + boundary.deletedOffset < from) ?? []
 
+  if (!pending) {
+    const { $from } = transaction.selection
+
+    transaction.doc.nodesBetween($from.start(), from, (node, position) => {
+      if (node.isText) {
+        earlier.push({ marks: node.marks, from: position, deletedOffset: 0 })
+      }
+    })
+  }
+
   return [...earlier, { marks: transaction.storedMarks, from, deletedOffset: 0 }]
 }
 
