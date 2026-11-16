@@ -130,6 +130,7 @@ describe('Android stored mark boundaries', () => {
     editor.commands.setTextSelection(3)
     editor.commands.toggleBold()
     editor.view.dom.dispatchEvent(new CompositionEvent('compositionupdate'))
+    editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, 1)))
     const transaction = editor.state.tr.insertText('aaaaa', 1, 5)
 
     transaction.setSelection(TextSelection.create(transaction.doc, 4))
