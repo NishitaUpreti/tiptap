@@ -1,5 +1,19 @@
 # Releases
 
+## v3.34.1
+
+### @tiptap/core
+
+#### Patch Changes
+
+- 5f8f50b: `nodeInputRule` with a capture group no longer inserts the last typed character twice when the rule runs on text input.
+
+### @tiptap/y-tiptap
+
+#### Patch Changes
+
+- 89ae1c9: Make typing in large collaborative documents faster by skipping unchanged content that comes before the edit.
+
 ## v3.34.0
 
 ### @tiptap/ai-toolkit
